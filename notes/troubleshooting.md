@@ -104,7 +104,7 @@ This document shows the issues I encountered during the pfSense VirtualBox homel
 
 
 
-\## 5. Boot Loop Into Installer After Reboot
+\## 3. Boot Loop Into Installer After Reboot
 
 
 
