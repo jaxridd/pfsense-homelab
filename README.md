@@ -1,123 +1,145 @@
 # pfSense Firewall Homelab (VirtualBox)
 
 ## Overview
-This project documents the deployment and configuration of a **pfSense Community Edition firewall** in a VirtualBox-based homelab environment. The lab simulates a small internal network protected by a stateful firewall, with client systems receiving network access via DHCP and routing through pfSense to the internet.
 
-The goal of this project is to gain hands-on experience with real-world networking and security concepts, including firewall configuration, NAT, DHCP, and troubleshooting Layer 2 and Layer 3 connectivity issues.
+This README documents the design, deployment, and troubleshooting of a pfSense firewall in a VirtualBox homelab environment. The lab simulates a small internal network protected by a stateful firewall, with client systems receiving network access via DHCP and routing traffic through pfSense to the internet.
+
+The primary goal of this project was to gain experience with networking and security fundamentals, including firewall policy design, NAT, DHCP, interface segmentation, and systematic troubleshooting of Layer 2 and Layer 3 connectivity issues.
+
+This lab intentionally mirrors scenarios commonly encountered IT, network administration, and security operations roles.
 
 ---
 
 ## Lab Architecture
 
-**Components:**
-- **Firewall:** pfSense Community Edition
-- **Client:** Ubuntu Desktop
-- **Hypervisor:** VirtualBox
+### Components
 
-**Network Design:**
-- **WAN:** VirtualBox NAT (internet access)
-- **LAN:** VirtualBox Host-only network (`vboxnet0`)
+- **Firewall:** pfSense Community Edition  
+- **Client:** Ubuntu Desktop  
+- **Hypervisor:** Oracle VirtualBox  
 
-**Logical Traffic Flow:**
+### Network Design
+
+- **WAN:** VirtualBox NAT (internet access)  
+- **LAN:** VirtualBox Host-Only Network 
+
+### Logical Traffic Flow
+
+1. The client VM requests an IP address via DHCP  
+2. pfSense assigns an IP address and default gateway on the LAN interface  
+3. Client traffic is routed to pfSense at `192.168.1.1`  
+4. pfSense performs outbound NAT on the WAN interface  
+5. Traffic is forwarded to the internet via VirtualBox NAT  
+6. Return traffic is statefully tracked and delivered back to the client  
+
+This flow demonstrates correct DHCP operation, routing, NAT translation, and stateful firewall behavior.
 
 ---
 
 ## Network Configuration
 
 ### pfSense Interfaces
+
 | Interface | Assignment | Purpose |
-|----------|------------|---------|
+|---------|------------|---------|
 | em0 | WAN | Internet access via VirtualBox NAT |
 | em1 | LAN | Internal network (192.168.1.0/24) |
 
-- **LAN IP Address:** `192.168.1.1`
-- **DHCP Server:** Enabled on LAN (pfSense only)
-- **Internal Domain:** `home.arpa`
+- **LAN IP Address:** `192.168.1.1/24`  
+- **DHCP Server:** Enabled on LAN (pfSense only)  
+- **Internal Domain:** `home.arpa`  
 
 ---
 
-## Firewall Rules
+## Firewall Policy
 
-### LAN Rules
+### LAN Firewall Rules
+
 The following firewall rules were configured and verified on the LAN interface:
 
-- **Anti-lockout Rule**
-  - Allows management access to the pfSense web interface (ports 80/443)
-- **Default allow LAN to any (IPv4)**
+- **Anti-lockout Rule**  
+  - Allows administrative access to the pfSense webConfigurator (ports 80/443)
+
+- **Default allow LAN to any (IPv4)**  
   - Permits internal clients to access external networks and services
-- **Default allow LAN IPv6 to any**
-  - Left enabled for completeness and future IPv6 use
 
-These rules establish a permissive internal policy while maintaining pfSense’s default deny posture on the WAN interface.
+- **Default allow LAN IPv6 to any**  
+  - Retained for completeness and future IPv6 support
 
----
+These rules establish a **permissive internal security model** appropriate for a trusted LAN while preserving pfSense’s default **deny-by-default posture on the WAN interface**.
 
-## NAT Configuration
+### NAT Configuration
 
-- **Outbound NAT Mode:** Automatic outbound NAT rule generation
+- **Outbound NAT Mode:** Automatic outbound NAT rule generation  
 
-This configuration allows internal LAN traffic to be translated and routed through the WAN interface to the internet.
+This configuration enables internal LAN traffic to be translated and routed through the WAN interface without manual rule creation.
 
 ---
 
 ## Client Configuration (Ubuntu Desktop)
 
-- Network Adapter: Host-only (`vboxnet0`)
-- IP Address: Assigned dynamically via pfSense DHCP
-- Default Gateway: `192.168.1.1`
+- **Network Adapter:** Host-Only Adapter (`vboxnet0`)  
+- **IP Address:** Dynamically assigned via pfSense DHCP  
+- **Default Gateway:** `192.168.1.1`  
 
-The client VM represents an internal workstation behind the firewall.
+The client VM represents a standard internal workstation behind the firewall.
 
 ---
 
 ## Validation and Testing
 
-The following tests were successfully performed to validate the setup:
+The following tests were performed to validate the environment:
 
-- DHCP lease assignment from pfSense
-- ICMP connectivity to pfSense (`192.168.1.1`)
-- ICMP connectivity to external hosts (`8.8.8.8`)
-- Access to pfSense web management interface via HTTPS
+- Successful DHCP lease assignment from pfSense  
+- ICMP connectivity to pfSense (`192.168.1.1`)  
+- ICMP connectivity to external hosts (`8.8.8.8`)  
+- HTTPS access to the pfSense web management interface  
 
-These tests confirmed correct DHCP operation, routing, NAT functionality, and firewall rule behavior.
+These tests confirm:
+
+- Correct DHCP operation  
+- Proper routing and NAT translation  
+- Functional firewall rule evaluation  
+- End-to-end network connectivity  
 
 ---
 
 ## Troubleshooting Highlights
 
-Several real-world networking issues were encountered and resolved during setup, including:
+Several real-world issues were encountered and resolved during setup:
 
-- Conflicting DHCP servers between VirtualBox and pfSense
-- Host-only network misconfiguration preventing LAN reachability
-- pfSense webConfigurator service not running on initial boot
+- **Conflicting DHCP servers**  
+  - VirtualBox DHCP conflicted with pfSense DHCP  
+  - Resolved by disabling VirtualBox DHCP and validating lease assignment from pfSense only  
 
-These issues were resolved by isolating Layer 2 versus Layer 3 problems, correcting VirtualBox network settings, and restarting pfSense services.
+- **Host-only network misconfiguration**  
+  - Prevented LAN reachability between pfSense and the client  
+  - Diagnosed by isolating Layer 2 vs Layer 3 connectivity and correcting adapter assignments  
+
+- **pfSense webConfigurator service availability**  
+  - Management interface unavailable on initial boot  
+  - Resolved by restarting services and validating firewall access rules  
+
+These issues were resolved using systematic troubleshooting techniques, emphasizing root cause analysis over trial-and-error.
 
 ---
 
 ## Lessons Learned
 
-- Importance of isolating DHCP services to avoid network conflicts
-- How firewall rules are evaluated top-down on interfaces
-- Differences between host-only, NAT, and bridged networking in virtualized environments
-- Practical troubleshooting techniques for firewall and routing issues
-
----
-
-## Next Steps
-
-Planned extensions to this homelab include:
-- Deploying **AdGuard Home** for DNS filtering
-- Enforcing DNS policies through pfSense
-- Adding logging and visibility features
-- Expanding documentation with network diagrams and screenshots
+- Importance of isolating DHCP services to avoid address conflicts  
+- How pfSense evaluates firewall rules top-down on a per-interface basis  
+- Practical differences between NAT, host-only, and bridged networking modes in virtualized environments  
+- Structured approaches to diagnosing firewall, routing, and service-layer issues  
 
 ---
 
 ## Screenshots
-Screenshots documenting the configuration and validation steps are located in the `screenshots/` directory.
+
+All configuration and validation screenshots are stored in the `screenshots/` directory and correspond to the sections above.
 
 ---
 
 ## Author
-Jax Riddell
+
+**Jax Riddell**
+
